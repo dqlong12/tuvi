@@ -151,7 +151,12 @@ class KeyboardBuilder(
             text = key.label
             gravity = Gravity.CENTER
             setTextColor(if (key.style == Style.ENTER) Color.WHITE else COLOR_TEXT)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, if (key.special) 18f else 22f)
+            val size = when {
+                key.style == Style.ENTER -> 30f
+                key.special -> 18f
+                else -> 22f
+            }
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, size)
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
