@@ -1,4 +1,4 @@
-# Bàn phím tùy chỉnh (Android)
+# Bàn phím Long (Android)
 
 Bàn phím riêng viết bằng Kotlin, có màn hình để chỉnh kích thước từng hàng phím, khoảng cách, thụt lề và độ rộng các phím đặc biệt (Shift, Xóa, ?123, Enter, Space).
 
