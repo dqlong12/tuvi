@@ -90,9 +90,10 @@ class KeyboardBuilder(
         val side = settings.sideWeight
 
         fun letter(c: Char, hint: String? = null): Key {
-            val shown = if (shifted) c.uppercaseChar() else c
-            return Key(shown.toString(), 1f, hint = hint) {
-                listener.onLetter(shown)
+            // Nhãn luôn là chữ hoa như ảnh mẫu; ký tự gửi đi mới phụ thuộc Shift
+            val out = if (shifted) c.uppercaseChar() else c
+            return Key(c.uppercaseChar().toString(), 1f, hint = hint) {
+                listener.onLetter(out)
                 if (shifted) listener.onShiftToggle() // Shift chỉ có tác dụng một lần
             }
         }

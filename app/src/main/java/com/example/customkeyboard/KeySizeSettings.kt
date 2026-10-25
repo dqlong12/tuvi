@@ -10,6 +10,13 @@ class KeySizeSettings(context: Context) {
 
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
+    init {
+        // Bản cũ có thể đã lưu khoảng cách 3dp; đưa về mặc định mới để các phím sát nhau
+        if (prefs.getInt(VERSION, 0) < 2) {
+            prefs.edit().remove(GAP).putInt(VERSION, 2).apply()
+        }
+    }
+
     fun rowHeightDp(row: Int): Int =
         prefs.getInt(rowKey(row), DEFAULT_ROW_HEIGHT_DP[row])
 
@@ -31,6 +38,7 @@ class KeySizeSettings(context: Context) {
 
     companion object {
         const val PREFS = "key_sizes"
+        const val VERSION = "settings_version"
         const val ROW_COUNT = 4
 
         const val GAP = "gap_dp"
