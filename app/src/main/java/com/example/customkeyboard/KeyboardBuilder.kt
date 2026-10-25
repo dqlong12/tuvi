@@ -132,13 +132,14 @@ class KeyboardBuilder(
         val side = settings.sideWeight
         val space = settings.spaceWeight
         val lang = if (listener.vietnameseMode) "VI" else "EN"
+        // ?123, VI và dấu phẩy ít dùng nên nhỏ lại; Space và Enter to hơn
         return listOf(
-            Key(modeLabel, side, special = true) { listener.onSymbolsToggle() },
-            Key(lang, side, special = true) { listener.onToggleLanguage() },
-            Key(",", 1f) { listener.onText(",") },
+            Key(modeLabel, side * 0.8f, special = true) { listener.onSymbolsToggle() },
+            Key(lang, side * 0.7f, special = true) { listener.onToggleLanguage() },
+            Key(",", 0.6f) { listener.onText(",") },
             Key("Space", space, style = Style.SPACE) { listener.onText(" ") },
             Key(".", 1f) { listener.onText(".") },
-            Key("↵", side, special = true, style = Style.ENTER) { listener.onEnter() }
+            Key("↵", side * 1.4f, special = true, style = Style.ENTER) { listener.onEnter() }
         )
     }
 
