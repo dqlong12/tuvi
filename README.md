@@ -13,7 +13,11 @@ Bàn phím riêng viết bằng Kotlin, có màn hình để chỉnh kích thư�
 - Có phần xem trước ngay trong màn hình cài đặt.
 - Nút Xóa giữ lâu sẽ xóa liên tục.
 
-**Chưa có:** gõ tiếng Việt (Telex/VNI). Đây là phần lớn nhất nếu muốn làm sau, cần thêm bộ xử lý bỏ dấu.
+**Gõ tiếng Việt (Telex):** nút **VI/EN** ở hàng dưới cùng để chuyển chế độ.
+- `s` sắc, `f` huyền, `r` hỏi, `x` ngã, `j` nặng, `z` bỏ dấu
+- `aa` → â, `ee` → ê, `oo` → ô, `aw` → ă, `ow`/`uw` → ơ/ư, `uow` → ươ, `dd` → đ
+
+Ví dụ: `Vieejt` → Việt, `tieengs` → tiếng, `dduowcj` → được.
 
 ## Cách build
 

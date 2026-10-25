@@ -11,6 +11,7 @@ import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -25,18 +26,26 @@ class KeyboardBuilder(
 ) {
 
     interface Listener {
+        /** true = đang gõ Telex tiếng Việt, false = gõ thẳng tiếng Anh */
+        val vietnameseMode: Boolean
+        fun onLetter(c: Char)
         fun onText(text: String)
         fun onDelete()
         fun onEnter()
         fun onShiftToggle()
         fun onSymbolsToggle()
+        fun onToggleLanguage()
     }
+
+    private enum class Style { NORMAL, SPACE, ENTER }
 
     private class Key(
         val label: String,
         val weight: Float,
         val special: Boolean = false,
         val repeat: Boolean = false,
+        val hint: String? = null,
+        val style: Style = Style.NORMAL,
         val action: () -> Unit
     )
 
@@ -80,10 +89,10 @@ class KeyboardBuilder(
     private fun letterRows(shifted: Boolean): List<List<Key>> {
         val side = settings.sideWeight
 
-        fun letter(c: String): Key {
-            val shown = if (shifted) c.uppercase() else c
-            return Key(shown, 1f) {
-                listener.onText(shown)
+        fun letter(c: Char, hint: String? = null): Key {
+            val shown = if (shifted) c.uppercaseChar() else c
+            return Key(shown.toString(), 1f, hint = hint) {
+                listener.onLetter(shown)
                 if (shifted) listener.onShiftToggle() // Shift chỉ có tác dụng một lần
             }
         }
@@ -91,10 +100,13 @@ class KeyboardBuilder(
         val shiftKey = Key("⇧", side, special = true) { listener.onShiftToggle() }
         val deleteKey = Key("⌫", side, special = true, repeat = true) { listener.onDelete() }
 
+        // Hàng trên có số nhỏ ở góc phải, giống các bàn phím phổ biến
+        val row1 = "qwertyuiop".mapIndexed { i, c -> letter(c, hint = "${(i + 1) % 10}") }
+
         return listOf(
-            "qwertyuiop".map { letter(it.toString()) },
-            "asdfghjkl".map { letter(it.toString()) },
-            listOf(shiftKey) + "zxcvbnm".map { letter(it.toString()) } + listOf(deleteKey),
+            row1,
+            "asdfghjkl".map { letter(it) },
+            listOf(shiftKey) + "zxcvbnm".map { letter(it) } + listOf(deleteKey),
             bottomRow("?123")
         )
     }
@@ -114,34 +126,60 @@ class KeyboardBuilder(
         )
     }
 
-    /** Hàng dưới cùng: nút chuyển chế độ, dấu phẩy, dấu cách, dấu chấm, Enter. */
+    /** Hàng dưới cùng: chuyển chế độ, chuyển ngôn ngữ, dấu phẩy, dấu cách, dấu chấm, Enter. */
     private fun bottomRow(modeLabel: String): List<Key> {
         val side = settings.sideWeight
         val space = settings.spaceWeight
+        val lang = if (listener.vietnameseMode) "VI" else "EN"
         return listOf(
             Key(modeLabel, side, special = true) { listener.onSymbolsToggle() },
+            Key(lang, side, special = true) { listener.onToggleLanguage() },
             Key(",", 1f) { listener.onText(",") },
-            Key("Space", space) { listener.onText(" ") },
+            Key("Space", space, style = Style.SPACE) { listener.onText(" ") },
             Key(".", 1f) { listener.onText(".") },
-            Key("↵", side, special = true) { listener.onEnter() }
+            Key("↵", side, special = true, style = Style.ENTER) { listener.onEnter() }
         )
     }
 
     // ---- Tạo phím và xử lý chạm ----
 
     private fun makeKey(key: Key, gap: Int): View {
-        val tv = TextView(context).apply {
+        val cell = FrameLayout(context)
+
+        val label = TextView(context).apply {
             text = key.label
             gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, if (key.special) 16f else 20f)
-            background = bg(normalColor(key))
+            setTextColor(if (key.style == Style.ENTER) Color.WHITE else COLOR_TEXT)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, if (key.special) 18f else 22f)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
         }
+        cell.addView(label)
+
+        key.hint?.let { hint ->
+            cell.addView(TextView(context).apply {
+                text = hint
+                setTextColor(COLOR_HINT)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                layoutParams = FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.TOP or Gravity.END
+                ).apply {
+                    topMargin = dp(2)
+                    rightMargin = dp(4)
+                }
+            })
+        }
+
+        cell.background = bg(normalColor(key))
         val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, key.weight)
         lp.setMargins(gap, gap, gap, gap)
-        tv.layoutParams = lp
-        tv.setOnTouchListener { v, e -> onKeyTouch(v, e, key) }
-        return tv
+        cell.layoutParams = lp
+        cell.setOnTouchListener { v, e -> onKeyTouch(v, e, key) }
+        return cell
     }
 
     private fun onKeyTouch(v: View, e: MotionEvent, key: Key): Boolean {
@@ -177,7 +215,11 @@ class KeyboardBuilder(
         repeatRunnable = null
     }
 
-    private fun normalColor(key: Key): Int = if (key.special) COLOR_SPECIAL else COLOR_KEY
+    private fun normalColor(key: Key): Int = when (key.style) {
+        Style.ENTER -> COLOR_ENTER
+        Style.SPACE -> COLOR_SPACE
+        Style.NORMAL -> COLOR_KEY
+    }
 
     private fun bg(color: Int): GradientDrawable = GradientDrawable().apply {
         setColor(color)
@@ -189,9 +231,13 @@ class KeyboardBuilder(
     ).toInt()
 
     companion object {
-        private val COLOR_BG = Color.parseColor("#1C1C1E")
-        private val COLOR_KEY = Color.parseColor("#4A4A4F")
-        private val COLOR_SPECIAL = Color.parseColor("#2C2C2E")
-        private val COLOR_PRESSED = Color.parseColor("#6E6E73")
+        // Màu lấy từ ảnh chụp bàn phím mẫu
+        private val COLOR_BG = Color.parseColor("#F7F7F9")
+        private val COLOR_KEY = Color.parseColor("#F7F7F9")
+        private val COLOR_PRESSED = Color.parseColor("#E1E1E3")
+        private val COLOR_SPACE = Color.parseColor("#E1E1E3")
+        private val COLOR_ENTER = Color.parseColor("#4CB6AC")
+        private val COLOR_TEXT = Color.parseColor("#39464E")
+        private val COLOR_HINT = Color.parseColor("#5E6B73")
     }
 }

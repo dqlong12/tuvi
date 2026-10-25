@@ -27,11 +27,14 @@ class SettingsActivity : Activity() {
 
         // Bản xem trước: nút chạm thử không làm gì
         previewBuilder = KeyboardBuilder(this, settings, object : KeyboardBuilder.Listener {
+            override val vietnameseMode: Boolean = true
+            override fun onLetter(c: Char) {}
             override fun onText(text: String) {}
             override fun onDelete() {}
             override fun onEnter() {}
             override fun onShiftToggle() {}
             override fun onSymbolsToggle() {}
+            override fun onToggleLanguage() {}
         })
 
         val root = LinearLayout(this).apply {

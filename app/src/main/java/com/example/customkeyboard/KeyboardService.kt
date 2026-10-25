@@ -8,8 +8,13 @@ class KeyboardService : InputMethodService(), KeyboardBuilder.Listener {
 
     private lateinit var settings: KeySizeSettings
     private lateinit var builder: KeyboardBuilder
+    private val telex = TelexEngine()
     private var shifted = false
     private var symbols = false
+    private var vietnamese = true
+
+    override val vietnameseMode: Boolean
+        get() = vietnamese
 
     override fun onCreate() {
         super.onCreate()
@@ -22,26 +27,59 @@ class KeyboardService : InputMethodService(), KeyboardBuilder.Listener {
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         // Dựng lại mỗi lần mở bàn phím để áp dụng kích thước vừa chỉnh
+        telex.clear()
         shifted = false
         symbols = false
         rebuild()
+    }
+
+    override fun onFinishInput() {
+        telex.clear()
+        super.onFinishInput()
     }
 
     private fun rebuild() {
         setInputView(builder.build(shifted, symbols))
     }
 
+    /** Kết thúc từ đang gõ dở, giữ nguyên chữ đã hiện trong ô nhập. */
+    private fun finishComposing() {
+        if (!telex.isEmpty()) {
+            telex.clear()
+            currentInputConnection?.finishComposingText()
+        }
+    }
+
     // ---- KeyboardBuilder.Listener ----
 
+    override fun onLetter(c: Char) {
+        val ic = currentInputConnection ?: return
+        if (!vietnamese) {
+            ic.commitText(c.toString(), 1)
+            return
+        }
+        telex.accept(c)
+        ic.setComposingText(telex.current(), 1)
+    }
+
     override fun onText(text: String) {
+        finishComposing()
         currentInputConnection?.commitText(text, 1)
     }
 
     override fun onDelete() {
-        currentInputConnection?.deleteSurroundingText(1, 0)
+        val ic = currentInputConnection ?: return
+        if (telex.isEmpty()) {
+            ic.deleteSurroundingText(1, 0)
+            return
+        }
+        telex.backspace()
+        ic.setComposingText(telex.current(), 1)
+        if (telex.isEmpty()) ic.finishComposingText()
     }
 
     override fun onEnter() {
+        finishComposing()
         val info: EditorInfo? = currentInputEditorInfo
         val flags = info?.imeOptions ?: 0
         val action = flags and EditorInfo.IME_MASK_ACTION
@@ -62,8 +100,15 @@ class KeyboardService : InputMethodService(), KeyboardBuilder.Listener {
     }
 
     override fun onSymbolsToggle() {
+        finishComposing()
         symbols = !symbols
         shifted = false
+        rebuild()
+    }
+
+    override fun onToggleLanguage() {
+        finishComposing()
+        vietnamese = !vietnamese
         rebuild()
     }
 }

@@ -40,7 +40,7 @@ class KeySizeSettings(context: Context) {
         const val BOTTOM = "bottom_dp"
 
         val DEFAULT_ROW_HEIGHT_DP = intArrayOf(46, 46, 46, 46)
-        const val DEFAULT_GAP = 3
+        const val DEFAULT_GAP = 0
         const val DEFAULT_INDENT = 16
         const val DEFAULT_SIDE = 15
         const val DEFAULT_SPACE = 40
