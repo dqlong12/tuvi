@@ -12,6 +12,9 @@ Bàn phím riêng viết bằng Kotlin, có màn hình để chỉnh kích thư�
 - Chỉnh khoảng đệm dưới cùng để tránh thanh điều hướng của máy.
 - Có phần xem trước ngay trong màn hình cài đặt.
 - Nút Xóa giữ lâu sẽ xóa liên tục.
+- **Bộ nhớ tạm:** nút 📋 ở thanh trên cùng hiện các đoạn đã copy gần đây. Bấm vào đoạn nào để dán đoạn đó. Có thể **Ghim** một đoạn để thành ghi chú, hoặc **Xóa** đoạn không cần. Nút "Lưu chữ đang chọn làm ghi chú" sẽ lưu phần chữ đang bôi đen trong ô nhập (hoặc 500 ký tự trước con trỏ).
+
+Lưu ý: mọi thứ đã copy, kể cả mật khẩu, đều được lưu trên máy dưới dạng chữ thường. Hãy xóa mục nhạy cảm sau khi dùng.
 
 **Gõ tiếng Việt (Telex):** nút **VI/EN** ở hàng dưới cùng để chuyển chế độ.
 - `s` sắc, `f` huyền, `r` hỏi, `x` ngã, `j` nặng, `z` bỏ dấu
