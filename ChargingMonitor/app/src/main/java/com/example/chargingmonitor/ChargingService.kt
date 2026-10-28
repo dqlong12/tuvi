@@ -9,6 +9,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
+import android.graphics.drawable.Icon
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
@@ -84,7 +90,7 @@ class ChargingService : Service() {
         val text = "Dòng ${info.current} · ${info.voltage} · ${info.temp}"
 
         return Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
+            .setSmallIcon(textIcon(info.short))
             .setContentTitle(title)
             .setContentText(text)
             .setContentIntent(openApp)
@@ -110,10 +116,13 @@ class ChargingService : Service() {
         val currentMa = if (currentUa != Int.MIN_VALUE) currentUa / 1000f else null
 
         val charging = status == BatteryManager.BATTERY_STATUS_CHARGING
-        val watts = if (currentMa != null && plugged != 0) {
-            String.format(Locale.US, "%.1f W", abs(voltageV * currentMa / 1000f))
-        } else {
-            "--"
+        val wattsValue = if (currentMa != null && plugged != 0) abs(voltageV * currentMa / 1000f) else null
+        val watts = wattsValue?.let { String.format(Locale.US, "%.1f W", it) } ?: "--"
+        // Số hiện trên thanh trạng thái: công suất khi đang sạc, phần trăm khi không sạc
+        val short = when {
+            charging && wattsValue != null -> String.format(Locale.US, "%.1fW", wattsValue)
+            percent >= 0 -> "$percent%"
+            else -> "--"
         }
 
         return Info(
@@ -122,8 +131,28 @@ class ChargingService : Service() {
             watts = watts,
             current = currentMa?.let { String.format(Locale.US, "%+.0f mA", it) } ?: "--",
             voltage = String.format(Locale.US, "%.2f V", voltageV),
-            temp = String.format(Locale.US, "%.1f °C", tempC)
+            temp = String.format(Locale.US, "%.1f °C", tempC),
+            short = short
         )
+    }
+
+    /** Vẽ chữ thành biểu tượng để hiện số trực tiếp trên thanh trạng thái. */
+    private fun textIcon(text: String): Icon {
+        val density = resources.displayMetrics.density
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = 14f * density
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        val width = (paint.measureText(text) + 4 * density).toInt().coerceAtLeast(1)
+        val height = (24 * density).toInt()
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        paint.textAlign = Paint.Align.CENTER
+        val fm = paint.fontMetrics
+        val baseline = height / 2f - (fm.ascent + fm.descent) / 2f
+        canvas.drawText(text, width / 2f, baseline, paint)
+        return Icon.createWithBitmap(bitmap)
     }
 
     private fun createChannel() {
@@ -139,7 +168,8 @@ class ChargingService : Service() {
         val watts: String,
         val current: String,
         val voltage: String,
-        val temp: String
+        val temp: String,
+        val short: String
     )
 
     companion object {
