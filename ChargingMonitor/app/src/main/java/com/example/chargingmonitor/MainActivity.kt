@@ -1,11 +1,15 @@
 package com.example.chargingmonitor
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -22,10 +26,12 @@ import kotlin.math.abs
 
 /**
  * Hiển thị thông số sạc pin theo thời gian thực, cập nhật mỗi giây.
+ * Có thể bật thông báo trên thanh trạng thái (chạy qua ChargingService).
  */
 class MainActivity : Activity() {
 
     private lateinit var battery: BatteryManager
+    private lateinit var toggleButton: TextView
     private val handler = Handler(Looper.getMainLooper())
     private val values = mutableMapOf<String, TextView>()
 
@@ -54,6 +60,15 @@ class MainActivity : Activity() {
         super.onPause()
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_NOTIFICATION) startChargingService()
+    }
+
     private fun buildUi(): View {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -73,6 +88,23 @@ class MainActivity : Activity() {
             setPadding(0, 0, 0, dp(12))
         })
 
+        toggleButton = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            gravity = Gravity.CENTER
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#1F6FEB"))
+                cornerRadius = dp(10).toFloat()
+            }
+            setOnClickListener { toggleNotification() }
+        }
+        root.addView(
+            toggleButton,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                .apply { setMargins(0, 0, 0, dp(12)) }
+        )
+
         for ((key, label) in FIELDS) {
             root.addView(row(label, key))
         }
@@ -81,6 +113,24 @@ class MainActivity : Activity() {
             setBackgroundColor(Color.parseColor("#101418"))
             addView(root)
         }
+    }
+
+    private fun toggleNotification() {
+        if (ChargingService.running) {
+            startService(Intent(this, ChargingService::class.java).setAction(ChargingService.ACTION_STOP))
+            return
+        }
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFICATION)
+        } else {
+            startChargingService()
+        }
+    }
+
+    private fun startChargingService() {
+        startForegroundService(Intent(this, ChargingService::class.java))
     }
 
     private fun row(label: String, key: String): View {
@@ -107,6 +157,12 @@ class MainActivity : Activity() {
     }
 
     private fun refresh() {
+        toggleButton.text = if (ChargingService.running) {
+            "Tắt thông báo trên thanh trạng thái"
+        } else {
+            "Bật thông báo trên thanh trạng thái"
+        }
+
         // Thông tin sạc, nhiệt độ, điện áp nằm trong intent sticky ACTION_BATTERY_CHANGED
         val b = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return
 
@@ -203,6 +259,8 @@ class MainActivity : Activity() {
     ).toInt()
 
     companion object {
+        private const val REQ_NOTIFICATION = 1
+
         private val FIELDS = listOf(
             "status" to "Trạng thái",
             "plugged" to "Nguồn sạc",
