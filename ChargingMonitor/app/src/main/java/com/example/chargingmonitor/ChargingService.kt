@@ -118,9 +118,11 @@ class ChargingService : Service() {
         val charging = status == BatteryManager.BATTERY_STATUS_CHARGING
         val wattsValue = if (currentMa != null && plugged != 0) abs(voltageV * currentMa / 1000f) else null
         val watts = wattsValue?.let { String.format(Locale.US, "%.1f W", it) } ?: "--"
-        // Số hiện trên thanh trạng thái: công suất khi đang sạc, phần trăm khi không sạc
+        // Số hiện trên thanh trạng thái: công suất khi đang sạc, công suất xả khi đang dùng pin
+        val dischargeW = if (currentMa != null) abs(voltageV * currentMa / 1000f) else null
         val short = when {
             charging && wattsValue != null -> String.format(Locale.US, "%.1fW", wattsValue)
+            !charging && plugged == 0 && dischargeW != null -> String.format(Locale.US, "xả %.1fW", dischargeW)
             percent >= 0 -> "$percent%"
             else -> "--"
         }
