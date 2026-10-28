@@ -90,7 +90,7 @@ class ChargingService : Service() {
         val text = "Dòng ${info.current} · ${info.voltage} · ${info.temp}"
 
         return Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(textIcon(info.short))
+            .setSmallIcon(textIcon(info.shortValue, info.shortUnit))
             .setContentTitle(title)
             .setContentText(text)
             .setContentIntent(openApp)
@@ -120,11 +120,11 @@ class ChargingService : Service() {
         val watts = wattsValue?.let { String.format(Locale.US, "%.1f W", it) } ?: "--"
         // Số hiện trên thanh trạng thái: +công suất khi đang sạc, -công suất khi đang dùng pin
         val dischargeW = if (currentMa != null) abs(voltageV * currentMa / 1000f) else null
-        val short = when {
-            charging && wattsValue != null -> String.format(Locale.US, "+%.1fW", wattsValue)
-            !charging && plugged == 0 && dischargeW != null -> String.format(Locale.US, "-%.1fW", dischargeW)
-            percent >= 0 -> "$percent%"
-            else -> "--"
+        val (shortValue, shortUnit) = when {
+            charging && wattsValue != null -> String.format(Locale.US, "+%.1f", wattsValue) to "W"
+            !charging && plugged == 0 && dischargeW != null -> String.format(Locale.US, "-%.1f", dischargeW) to "W"
+            percent >= 0 -> "$percent" to "%"
+            else -> "--" to ""
         }
 
         return Info(
@@ -134,26 +134,36 @@ class ChargingService : Service() {
             current = currentMa?.let { String.format(Locale.US, "%+.0f mA", it) } ?: "--",
             voltage = String.format(Locale.US, "%.2f V", voltageV),
             temp = String.format(Locale.US, "%.1f °C", tempC),
-            short = short
+            shortValue = shortValue,
+            shortUnit = shortUnit
         )
     }
 
-    /** Vẽ chữ thành biểu tượng để hiện số trực tiếp trên thanh trạng thái. */
-    private fun textIcon(text: String): Icon {
+    /** Vẽ số (trên) và đơn vị (dưới) thành biểu tượng trên thanh trạng thái, giống app đo tốc độ. */
+    private fun textIcon(value: String, unit: String): Icon {
         val density = resources.displayMetrics.density
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        // Số to hơn, ép hẹp ngang để chiều rộng biểu tượng không bị hệ thống thu nhỏ thêm
+        val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
-            textSize = 14f * density
+            textSize = 19f * density
+            textScaleX = 0.72f
             typeface = Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.CENTER
         }
-        val width = (paint.measureText(text) + 4 * density).toInt().coerceAtLeast(1)
+        val unitPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = 10f * density
+            typeface = Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.CENTER
+        }
+        val contentWidth = maxOf(valuePaint.measureText(value), unitPaint.measureText(unit))
+        val width = (contentWidth + 1 * density).toInt().coerceAtLeast(1)
         val height = (24 * density).toInt()
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        paint.textAlign = Paint.Align.CENTER
-        val fm = paint.fontMetrics
-        val baseline = height / 2f - (fm.ascent + fm.descent) / 2f
-        canvas.drawText(text, width / 2f, baseline, paint)
+        val cx = width / 2f
+        canvas.drawText(value, cx, 14.5f * density, valuePaint)
+        canvas.drawText(unit, cx, height - 1 * density, unitPaint)
         return Icon.createWithBitmap(bitmap)
     }
 
@@ -171,7 +181,8 @@ class ChargingService : Service() {
         val current: String,
         val voltage: String,
         val temp: String,
-        val short: String
+        val shortValue: String,
+        val shortUnit: String
     )
 
     companion object {
