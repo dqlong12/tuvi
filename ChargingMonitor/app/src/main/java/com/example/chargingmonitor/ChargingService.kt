@@ -90,7 +90,13 @@ class ChargingService : Service() {
         val text = "Dòng ${info.current} · ${info.voltage} · ${info.temp}"
 
         return Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(textIcon(info.shortValue, info.shortUnit))
+            .setSmallIcon(
+                textIcon(
+                    info.shortValue,
+                    if (IconSettings.showUnit(this)) info.shortUnit else "",
+                    IconSettings.squeeze(this)
+                )
+            )
             .setContentTitle(title)
             .setContentText(text)
             .setContentIntent(openApp)
@@ -141,26 +147,28 @@ class ChargingService : Service() {
 
     /**
      * Vẽ số và đơn vị trên MỘT dòng thành biểu tượng thanh trạng thái.
-     * Hệ thống thu nhỏ biểu tượng theo chiều rộng, nên chữ được ép hẹp để chiều cao chữ lớn hơn.
+     * Hệ thống thu nhỏ biểu tượng theo chiều rộng, nên chữ được ép hẹp (squeeze) để chiều cao chữ lớn hơn.
+     * Đơn vị rỗng thì chỉ vẽ số.
      */
-    private fun textIcon(value: String, unit: String): Icon {
+    private fun textIcon(value: String, unit: String, squeeze: Float): Icon {
         val density = resources.displayMetrics.density
-        val condensed = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+        val font = Typeface.create("sans-serif-condensed", Typeface.BOLD)
         val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             textSize = 24f * density
-            textScaleX = 0.45f
-            typeface = condensed
+            textScaleX = squeeze
+            typeface = font
         }
         val unitPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             textSize = 14f * density
-            textScaleX = 0.45f
-            typeface = condensed
+            textScaleX = squeeze
+            typeface = font
         }
-        val gap = 1 * density
+        val gap = if (unit.isEmpty()) 0f else 1 * density
         val valueWidth = valuePaint.measureText(value)
-        val width = (valueWidth + gap + unitPaint.measureText(unit) + gap).toInt().coerceAtLeast(1)
+        val unitWidth = if (unit.isEmpty()) 0f else unitPaint.measureText(unit)
+        val width = (valueWidth + gap + unitWidth + 1 * density).toInt().coerceAtLeast(1)
         val height = (24 * density).toInt()
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -168,7 +176,7 @@ class ChargingService : Service() {
         val fm = valuePaint.fontMetrics
         val baseline = height / 2f - (fm.ascent + fm.descent) / 2f
         canvas.drawText(value, 0f, baseline, valuePaint)
-        canvas.drawText(unit, valueWidth + gap, baseline, unitPaint)
+        if (unit.isNotEmpty()) canvas.drawText(unit, valueWidth + gap, baseline, unitPaint)
         return Icon.createWithBitmap(bitmap)
     }
 

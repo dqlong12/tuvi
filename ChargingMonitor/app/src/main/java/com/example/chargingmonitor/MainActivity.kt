@@ -32,6 +32,8 @@ class MainActivity : Activity() {
 
     private lateinit var battery: BatteryManager
     private lateinit var toggleButton: TextView
+    private lateinit var sizeBox: LinearLayout
+    private lateinit var unitBox: LinearLayout
     private val handler = Handler(Looper.getMainLooper())
     private val values = mutableMapOf<String, TextView>()
 
@@ -105,6 +107,14 @@ class MainActivity : Activity() {
                 .apply { setMargins(0, 0, 0, dp(12)) }
         )
 
+        sizeBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        unitBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(sectionLabel("Kích thước số trên thanh trạng thái (lớn nhất → nhỏ nhất)"))
+        root.addView(sizeBox)
+        root.addView(sectionLabel("Đơn vị"))
+        root.addView(unitBox)
+        renderSettings()
+
         for ((key, label) in FIELDS) {
             root.addView(row(label, key))
         }
@@ -127,6 +137,52 @@ class MainActivity : Activity() {
         } else {
             startChargingService()
         }
+    }
+
+    /** Vẽ lại danh sách tùy chọn theo giá trị đang lưu. */
+    private fun renderSettings() {
+        sizeBox.removeAllViews()
+        val current = IconSettings.sizeIndex(this)
+        IconSettings.SIZES.forEachIndexed { i, size ->
+            sizeBox.addView(optionRow(size.label, i == current) {
+                IconSettings.setSizeIndex(this, i)
+                renderSettings()
+            })
+        }
+
+        unitBox.removeAllViews()
+        val showUnit = IconSettings.showUnit(this)
+        unitBox.addView(optionRow("Có chữ W (hoặc %)", showUnit) {
+            IconSettings.setShowUnit(this, true)
+            renderSettings()
+        })
+        unitBox.addView(optionRow("Bỏ chữ W (hoặc %)", !showUnit) {
+            IconSettings.setShowUnit(this, false)
+            renderSettings()
+        })
+    }
+
+    private fun optionRow(label: String, selected: Boolean, onClick: () -> Unit): TextView =
+        TextView(this).apply {
+            text = label
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setPadding(dp(14), dp(11), dp(14), dp(11))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor(if (selected) "#1F6FEB" else "#1C2329"))
+                cornerRadius = dp(8).toFloat()
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(0, 0, 0, dp(6)) }
+            setOnClickListener { onClick() }
+        }
+
+    private fun sectionLabel(text: String): TextView = TextView(this).apply {
+        this.text = text
+        setTextColor(Color.parseColor("#7F8B92"))
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+        setPadding(0, dp(8), 0, dp(6))
     }
 
     private fun startChargingService() {
