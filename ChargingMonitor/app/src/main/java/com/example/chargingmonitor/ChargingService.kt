@@ -139,31 +139,36 @@ class ChargingService : Service() {
         )
     }
 
-    /** Vẽ số (trên) và đơn vị (dưới) thành biểu tượng trên thanh trạng thái, giống app đo tốc độ. */
+    /**
+     * Vẽ số và đơn vị trên MỘT dòng thành biểu tượng thanh trạng thái.
+     * Hệ thống thu nhỏ biểu tượng theo chiều rộng, nên chữ được ép hẹp để chiều cao chữ lớn hơn.
+     */
     private fun textIcon(value: String, unit: String): Icon {
         val density = resources.displayMetrics.density
-        // Số to hơn, ép hẹp ngang để chiều rộng biểu tượng không bị hệ thống thu nhỏ thêm
+        val condensed = Typeface.create("sans-serif-condensed", Typeface.BOLD)
         val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
-            textSize = 19f * density
-            textScaleX = 0.72f
-            typeface = Typeface.DEFAULT_BOLD
-            textAlign = Paint.Align.CENTER
+            textSize = 24f * density
+            textScaleX = 0.45f
+            typeface = condensed
         }
         val unitPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
-            textSize = 10f * density
-            typeface = Typeface.DEFAULT_BOLD
-            textAlign = Paint.Align.CENTER
+            textSize = 14f * density
+            textScaleX = 0.45f
+            typeface = condensed
         }
-        val contentWidth = maxOf(valuePaint.measureText(value), unitPaint.measureText(unit))
-        val width = (contentWidth + 1 * density).toInt().coerceAtLeast(1)
+        val gap = 1 * density
+        val valueWidth = valuePaint.measureText(value)
+        val width = (valueWidth + gap + unitPaint.measureText(unit) + gap).toInt().coerceAtLeast(1)
         val height = (24 * density).toInt()
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val cx = width / 2f
-        canvas.drawText(value, cx, 14.5f * density, valuePaint)
-        canvas.drawText(unit, cx, height - 1 * density, unitPaint)
+        // Căn giữa theo chiều dọc; số và đơn vị dùng chung một đường nền
+        val fm = valuePaint.fontMetrics
+        val baseline = height / 2f - (fm.ascent + fm.descent) / 2f
+        canvas.drawText(value, 0f, baseline, valuePaint)
+        canvas.drawText(unit, valueWidth + gap, baseline, unitPaint)
         return Icon.createWithBitmap(bitmap)
     }
 
