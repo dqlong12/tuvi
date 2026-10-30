@@ -102,6 +102,7 @@ class ChargingService : Service() {
             .setContentIntent(openApp)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setShowWhen(false)
             .addAction(0, "Tắt", stop)
             .build()
@@ -182,8 +183,11 @@ class ChargingService : Service() {
 
     private fun createChannel() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        // Kênh cũ không có quyền hiện trên màn hình khóa, nên xóa đi và tạo kênh mới (đổi ID)
+        nm.deleteNotificationChannel(OLD_CHANNEL_ID)
         val channel = NotificationChannel(CHANNEL_ID, "Thông số sạc", NotificationManager.IMPORTANCE_LOW)
         channel.setShowBadge(false)
+        channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         nm.createNotificationChannel(channel)
     }
 
@@ -200,7 +204,8 @@ class ChargingService : Service() {
 
     companion object {
         const val ACTION_STOP = "com.example.chargingmonitor.STOP"
-        private const val CHANNEL_ID = "charging"
+        private const val CHANNEL_ID = "charging_lock"
+        private const val OLD_CHANNEL_ID = "charging"
         private const val NOTIF_ID = 1
 
         @Volatile
