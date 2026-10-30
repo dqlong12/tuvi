@@ -20,6 +20,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.widget.RemoteViews
 import java.util.Locale
 import kotlin.math.abs
 
@@ -89,6 +90,15 @@ class ChargingService : Service() {
         }
         val text = "Dòng ${info.current} · ${info.voltage} · ${info.temp}"
 
+        // Thẻ lớn trên màn hình khóa: số công suất to, dòng dưới là phần trăm và trạng thái
+        val views = RemoteViews(packageName, R.layout.notification_charging).apply {
+            setTextViewText(R.id.big_value, "${info.shortValue} ${info.shortUnit}".trim())
+            setTextViewText(
+                R.id.detail,
+                "${info.percent}% · ${if (info.charging) "Đang sạc" else "Không sạc"}"
+            )
+        }
+
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(
                 textIcon(
@@ -99,6 +109,8 @@ class ChargingService : Service() {
             )
             .setContentTitle(title)
             .setContentText(text)
+            .setCustomContentView(views)
+            .setCustomBigContentView(views)
             .setContentIntent(openApp)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -183,10 +195,13 @@ class ChargingService : Service() {
 
     private fun createChannel() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        // Kênh cũ không có quyền hiện trên màn hình khóa, nên xóa đi và tạo kênh mới (đổi ID)
-        nm.deleteNotificationChannel(OLD_CHANNEL_ID)
-        val channel = NotificationChannel(CHANNEL_ID, "Thông số sạc", NotificationManager.IMPORTANCE_LOW)
+        // Độ ưu tiên kênh không đổi được sau khi tạo (kênh cũ IMPORTANCE_LOW bị hệ thống ẩn trên màn hình khóa),
+        // nên xóa các kênh cũ và tạo kênh mới với ID khác
+        OLD_CHANNEL_IDS.forEach { nm.deleteNotificationChannel(it) }
+        val channel = NotificationChannel(CHANNEL_ID, "Thông số sạc", NotificationManager.IMPORTANCE_DEFAULT)
         channel.setShowBadge(false)
+        channel.setSound(null, null)
+        channel.enableVibration(false)
         channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         nm.createNotificationChannel(channel)
     }
@@ -204,8 +219,8 @@ class ChargingService : Service() {
 
     companion object {
         const val ACTION_STOP = "com.example.chargingmonitor.STOP"
-        private const val CHANNEL_ID = "charging_lock"
-        private const val OLD_CHANNEL_ID = "charging"
+        private const val CHANNEL_ID = "charging_visible"
+        private val OLD_CHANNEL_IDS = listOf("charging", "charging_lock")
         private const val NOTIF_ID = 1
 
         @Volatile
